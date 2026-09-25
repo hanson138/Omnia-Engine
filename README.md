@@ -1,23 +1,45 @@
-# Omnia Character Cognition for SillyTavern · Phase 0
+# Omnia Character Cognition · SillyTavern 扩展 0.2
 
-这是独立的实验脚本，用来检验“检索到的资料先经过角色认知选择，再交给 SillyTavern 原有生成模型”是否真的改善角色扮演。它不是 Omnia 运行时移植，也不修改 SillyTavern 核心。默认 **OFF + mock**。已在本地 SillyTavern 1.19.0 与 TavernHelper 4.11.0 中完成加载和本机假模型接线测试；角色质量对照尚未进行。详见 [实际结果](docs/RESULTS.md)。
-
-## 已实现的路径
+这是一个可本地安装的 SillyTavern 原生 UI 扩展，用于检验“先筛选角色此刻在意的信息，再由 ST 原有模型写对白”是否改善角色扮演。它不修改 ST 核心，也不是 Omnia 世界运行时。默认 `OFF + mock`；真实 Jev 与长期对照质量尚未验证，详见[实测记录](docs/RESULTS.md)。
 
 ```text
-当前角色卡 + 最近对话 + 关键词匹配的绑定世界书
-  → 有限候选证据（保留来源 ID；发言只是一项“声称”）
-  → Mock 或本机 Jev 桥
-  → 本轮私有 CognitionSnapshot
-  → TavernHelper.injectPrompts({once:true})
-  → SillyTavern 原有模型继续写对白
+当前角色卡 + 近期可见对话 + 绑定及已启用的全局世界书
+  → 有来源 ID 的候选证据
+  → mock 或本机 Jev 桥
+  → 本轮 CognitionSnapshot
+  → ST extension prompt（生成结束立即清理）
+  → ST 已配置的主模型写对白
 ```
 
-模式：`OFF` 不请求也不注入；`RELEVANCE` 选一项当前显著证据；`COGNITION` 额外选一个高层应答倾向；`DEBUG` 与 COGNITION 相同并在面板显示候选、结果、注入文字和延迟。Jev 不写对白。群聊暂时跳过；普通单角色聊天是验证对象。
+`OFF` 不请求也不注入；`RELEVANCE` 选择显著证据；`COGNITION` 再选择回应倾向；`DEBUG` 额外显示候选、选中 ID 与注入内容。当前只支持单角色聊天，群聊会在诊断中说明跳过。Jev 不负责写对白，也不把发言自动当作世界事实。
 
-## 本地构建
+## 安装到本机 ST
 
-在 Windows PowerShell 进入 `E:\Codex_local\new_project\omnia-cognition-st`，运行：
+需要 Node.js 22 或更新版本；不需要 Docker、WSL 或 Linux。本仓库已包含构建好的 `index.js`，所以**安装扩展时无需运行 npm**。先在 PowerShell 中进入本仓库，把下列路径改成你的 SillyTavern 安装目录：
+
+```powershell
+cd E:\Codex_local\new_project\omnia-cognition-st
+.\scripts\install-local.ps1 -SillyTavernPath 'E:\path\to\SillyTavern'
+```
+
+如果你使用了 ST 多用户模式，另传 `-UserHandle '用户名'`。脚本检查 ST 和用户目录后，只复制 `manifest.json`、`index.js`、`style.css`。刷新 ST 页面，打开顶部**扩展程序**，在“Omnia · 角色认知”抽屉设置模式。先用 `mock + DEBUG` 做单角色接线测试；正式接 Jev 时再切换 `bridge`。如果之前启用了同名 TavernHelper 全局实验脚本，请先关闭它，否则会重复注入。
+
+本仓库根目录已有 ST 所需的 `manifest.json`、`index.js` 与 `style.css`，以后放到可访问的 Git 仓库后，可用 ST 的“扩展程序 → 安装扩展程序”输入仓库 URL。**目前没有远程仓库或导入 URL。** 当前 ST 安装器只接受 HTTP(S) Git URL，不接受本机目录或 ZIP；上面的本机复制方式已实测。[ST 扩展安装说明](https://docs.sillytavern.app/extensions/)
+
+本次隔离测试宿主位于 `.local-host/SillyTavern`，已被 Git 忽略。在该目录运行 `node server.js --port 8000` 可启动它。测试假模型可从本仓库运行 `node tests/live/openai-stub.mjs`；它只用于检查注入，不评价对白质量。
+
+## 本机 Jev 桥
+
+桥服务与 ST 主模型连接分开运行。它复用同级 `../omnia-engine/packages/jev/dist` 中的 `AiSdkJevClient`。在**启动桥的 PowerShell 窗口**设置 `AI_GATEWAY_API_KEY` 环境变量，然后在本仓库运行：
+
+```powershell
+$env:ST_ALLOWED_ORIGIN = 'http://127.0.0.1:8000'
+npm run bridge
+```
+
+桥只监听 `127.0.0.1:43187`。若你的 ST 地址为 `http://localhost:8000`，请把 `ST_ALLOWED_ORIGIN` 改为完全相同的来源。扩展抽屉里的“检查本机桥”会报告桥是否运行、密钥是否配置，不会显示密钥值。**不要把网关密钥输入 ST 扩展、角色卡或世界书。** 本轮只验证了无密钥情况下的健康检查与失败开放，未发起真实 Jev 请求。
+
+## 开发与阅读
 
 ```powershell
 npm ci
@@ -26,37 +48,6 @@ npm run typecheck
 npm run build
 ```
 
-这里需要 Node.js 22 或更新版本，不需要 Docker、WSL 或 Linux。构建会得到 `dist/omnia-cognition.js` 和 `dist/bridge-server.mjs`。依赖版本锁在 `package-lock.json`；安装时需要 npm 可访问包源，安装完成后测试与构建不需要网络。
+`npm run build` 会更新根目录 `index.js`，同时构建旧 TavernHelper 实验包到 `dist/omnia-cognition.js` 和本机桥 `dist/bridge-server.mjs`。锁文件固定依赖版本；首次 `npm ci` 需要访问 npm，之后本地测试和构建无需网络。
 
-## 安装到 SillyTavern
-
-1. 按 [SillyTavern 官方安装说明](https://docs.sillytavern.app/installation/windows/)安装并启动 SillyTavern；通过其扩展管理器安装 [JS-Slash-Runner / TavernHelper](https://github.com/N0VI028/JS-Slash-Runner)。
-2. 把 `dist/omnia-cognition.js` 复制到 SillyTavern 安装目录下的 `public/scripts/extensions/third-party/JS-Slash-Runner/omnia-cognition.js`。打开 TavernHelper 的[脚本库](https://n0vi028.github.io/JS-Slash-Runner-Doc/guide/%E5%9F%BA%E6%9C%AC%E7%94%A8%E6%B3%95/%E8%84%9A%E6%9C%AC%E5%BA%93.html)，新增并启用**全局后台脚本**，内容只需：
-
-   ```js
-   const script = document.createElement('script');
-   script.src = '/scripts/extensions/third-party/JS-Slash-Runner/omnia-cognition.js';
-   document.head.append(script);
-   window.addEventListener('pagehide', () => script.remove(), { once: true });
-   ```
-
-   这是本次实机验证的加载方式。更新插件时重新构建、复制并刷新页面。全局脚本避免把实验代码写进角色卡。
-3. 刷新页面。右下角应出现 `Omnia Cognition · Phase 0` 面板。先选 `mock`，再选 `RELEVANCE` 或 `COGNITION`，用单角色对话验证。`DEBUG` 会显示内部证据，注意不要在公开截图中泄露私密聊天内容。
-4. 若脚本没有显示面板，先检查 TavernHelper 脚本库是否启用脚本，以及浏览器控制台的启动错误。当前版本已验证 iframe 能显示面板。
-
-仓库中的 `.local-host/SillyTavern` 是这次创建的隔离测试安装，已由 `.gitignore` 排除，不属于插件交付源码。在本机可从该目录运行 `node server.js --port 8000`，再访问 `http://127.0.0.1:8000/`。`tests/live/openai-stub.mjs` 提供仅本机使用的假模型端点，供接线回归测试，不能用于评价回复质量。
-
-## 使用本机 Jev 桥
-
-只有在 mock 流程验证之后才切换 `bridge`。桥依赖同级 `../omnia-engine/packages/jev/dist` 已构建；它复用现有 `AiSdkJevClient`。在**运行桥的 PowerShell 窗口**设置 `AI_GATEWAY_API_KEY` 环境变量，然后运行：
-
-```powershell
-$env:ST_ALLOWED_ORIGIN = 'http://127.0.0.1:8000'
-npm run bridge
-```
-
-密钥值应在该本机窗口中设置，不要贴进脚本、面板或角色卡。若 SillyTavern 实际地址是 `http://localhost:8000`，把 `ST_ALLOWED_ORIGIN` 改成这个完整来源（协议、主机、端口必须一致）。桥仅监听 `127.0.0.1:43187`。浏览器面板中的 `serviceUrl` 保持默认 `http://127.0.0.1:43187/jev/evaluate`。本轮未读取或使用任何真实密钥，也没有发起真实 Jev 请求。
-
-## 阅读顺序
-
-[REFERENCE_NOTES.md](REFERENCE_NOTES.md) → [架构](docs/ARCHITECTURE.md) → [安全边界](docs/SECURITY.md) → [实验方案](docs/EXPERIMENT.md) → [实际结果](docs/RESULTS.md)。
+先读[接口核对](REFERENCE_NOTES.md)、[架构与学习说明](docs/ARCHITECTURE.md)、[安全边界](docs/SECURITY.md)，再读[对照实验](docs/EXPERIMENT.md)和[实际结果](docs/RESULTS.md)。

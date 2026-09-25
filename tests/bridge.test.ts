@@ -17,6 +17,9 @@ describe('local bridge', () => {
       const address = server.address();
       if (!address || typeof address === 'string') throw Error('no address');
       const url = `http://127.0.0.1:${address.port}/jev/evaluate`;
+      const health = await fetch(`http://127.0.0.1:${address.port}/health`, { headers: { origin: 'http://127.0.0.1:8000' } });
+      expect(health.status).toBe(200);
+      expect(await health.json()).toMatchObject({ status: 'running' });
       const good = await fetch(url, { method: 'POST', headers: { origin: 'http://127.0.0.1:8000', 'content-type': 'application/json' }, body: JSON.stringify({ input, mode: 'RELEVANCE' }) });
       expect(good.status).toBe(200);
       expect((await good.json()).salientEvidence[0].candidateId).toBe('m1');

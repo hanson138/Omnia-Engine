@@ -15,6 +15,10 @@ function fixture(provider: CharacterCognitionProvider = new MockCognitionProvide
 }
 
 describe('runtime', () => {
+  it('shows disabled status when it starts in OFF mode', () => {
+    const runtime = new CognitionRuntime({ getContext: async () => null, inject: () => { throw Error('must not inject'); } }, new MockCognitionProvider(), defaultSettings);
+    expect(runtime.inspect().status).toBe('disabled');
+  });
   it('injects one generation-scoped prompt after ordinary user message', async () => {
     const { runtime, inject } = fixture();
     await runtime.generationBeginning('normal');
@@ -23,6 +27,7 @@ describe('runtime', () => {
     expect(inject.mock.calls[0]?.[0].content).toContain('Bob');
     expect(inject.mock.calls[0]?.[1]).toEqual({ once: true });
     runtime.generationEnded();
+    expect(runtime.inspect().snapshot?.characterId).toBe('bob');
   });
   it('does nothing in OFF mode', async () => {
     const { runtime, inject } = fixture();
@@ -37,7 +42,7 @@ describe('runtime', () => {
     const { runtime, inject, switchChat } = fixture(provider);
     await runtime.generationBeginning('normal');
     const pending = runtime.messageSent(1);
-    await Promise.resolve();
+    await vi.waitFor(() => expect(complete).toBeTypeOf('function'));
     switchChat();
     complete({ requestId: 'old', chatId: 'chat-a', characterId: 'bob', sourceMessageId: 1, salientEvidence: [], providerStatus: 'ok', latencyMs: 0, createdAt: 'now' });
     await pending;
@@ -58,6 +63,16 @@ describe('runtime', () => {
     runtime.generationStopped();
     expect(handle.uninject).toHaveBeenCalledOnce();
   });
+  it('clears private diagnostics when the chat changes', async () => {
+    const { runtime, switchChat } = fixture();
+    await runtime.generationBeginning('normal'); await runtime.messageSent(1);
+    expect(runtime.inspect().injectedText).toContain('Bob');
+    switchChat();
+    expect(runtime.inspect()).toMatchObject({ status: 'idle', candidates: [] });
+    expect(runtime.inspect().injectedText).toBeUndefined();
+    expect(runtime.inspect().snapshot).toBeUndefined();
+    expect(runtime.inspect().context).toBeUndefined();
+  });
   it('times out without injecting when a provider does not settle', async () => {
     const { runtime, inject } = fixture({ evaluate: () => new Promise(() => {}) });
     runtime.setSettings({ ...defaultSettings, mode: 'COGNITION', timeoutMs: 100 });
@@ -65,6 +80,14 @@ describe('runtime', () => {
     await runtime.messageSent(1);
     expect(inject).not.toHaveBeenCalled();
     expect(runtime.inspect().timeoutCount).toBe(1);
+  });
+  it('does not freeze generation when the host context read stalls', async () => {
+    const host: RuntimeHost = { getContext: () => new Promise(() => {}), inject: () => { throw Error('must not inject'); } };
+    const runtime = new CognitionRuntime(host, new MockCognitionProvider(), { ...defaultSettings, mode: 'COGNITION', timeoutMs: 100 });
+    await runtime.generationBeginning('normal');
+    await runtime.messageSent(1);
+    expect(runtime.inspect().timeoutCount).toBe(1);
+    expect(runtime.inspect().status).toBe('degraded');
   });
   it('counts a timeout when fetch rejects immediately on AbortSignal', async () => {
     const { runtime, inject } = fixture({ evaluate: (_input, _mode, signal) => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('The operation was aborted', 'AbortError')))) });

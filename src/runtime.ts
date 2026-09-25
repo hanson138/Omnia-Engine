@@ -36,7 +36,9 @@ export class CognitionRuntime {
   private sequence = 0;
   private state: InspectorState = { status: 'idle', candidates: [], staleCount: 0, errorCount: 0, timeoutCount: 0 };
 
-  constructor(private readonly host: RuntimeHost, private readonly provider: CharacterCognitionProvider, private settings: Settings, private readonly onChange: (state: InspectorState) => void = () => {}) {}
+  constructor(private readonly host: RuntimeHost, private readonly provider: CharacterCognitionProvider, private settings: Settings, private readonly onChange: (state: InspectorState) => void = () => {}) {
+    if (settings.mode === 'OFF') this.state.status = 'disabled';
+  }
 
   setSettings(settings: Settings): void {
     this.settings = settings;
@@ -60,11 +62,23 @@ export class CognitionRuntime {
 
   generationEnded(messageId?: number): void {
     if (messageId !== undefined) this.state.finalMessageId = messageId;
-    this.contextChanged();
+    this.invalidateActive();
     this.publish();
   }
   generationStopped(): void { this.contextChanged(); }
   contextChanged(): void {
+    this.invalidateActive();
+    this.state.status = this.settings.mode === 'OFF' ? 'disabled' : 'idle';
+    this.state.context = undefined;
+    this.state.candidates = [];
+    this.state.snapshot = undefined;
+    this.state.injectedText = undefined;
+    this.state.lastError = undefined;
+    this.state.skipReason = undefined;
+    this.state.finalMessageId = undefined;
+    this.publish();
+  }
+  private invalidateActive(): void {
     this.epoch++;
     this.active = false;
     this.controller?.abort('context changed');
@@ -77,7 +91,7 @@ export class CognitionRuntime {
     if (this.settings.mode === 'OFF' || !this.active) return;
     const epoch = this.epoch;
     let context: HostContext | null;
-    try { context = await this.host.getContext(); }
+    try { context = await this.readContext(); }
     catch (error) { this.fail(error); return; }
     if (!context || epoch !== this.epoch) return;
     if (context.group) {
@@ -118,7 +132,7 @@ export class CognitionRuntime {
       const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => { timedOut = true; controller.abort('timeout'); reject(new Error('timeout')); }, this.settings.timeoutMs); });
       const result = await Promise.race([this.provider.evaluate(input, mode, controller.signal), timeout]);
       if (epoch !== this.epoch || !this.active || controller.signal.aborted) { this.state.staleCount++; this.publish(); return; }
-      const now = await this.host.getContext();
+      const now = await this.readContext();
       if (!now || now.chatId !== input.chatId || now.character.id !== input.character.id || now.messages.at(-1)?.id !== input.currentSituation.sourceMessageId) { this.state.staleCount++; this.publish(); return; }
       if (!validateSnapshot(result, input, mode)) throw new Error('invalid cognition snapshot');
       const content = formatCognition(input, result);
@@ -146,6 +160,15 @@ export class CognitionRuntime {
     }
     this.state.status = Date.now() < this.cooldownUntil ? 'cooldown' : 'degraded';
     this.publish();
+  }
+  private async readContext(): Promise<HostContext | null> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        this.host.getContext(),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('timeout reading SillyTavern context')), this.settings.timeoutMs); }),
+      ]);
+    } finally { if (timer) clearTimeout(timer); }
   }
   private publish(): void {
     if (this.settings.debugLogging) console.debug('[omnia-cognition]', {

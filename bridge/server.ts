@@ -22,7 +22,11 @@ export function createBridgeServer(options: { allowedOrigin: string; evaluate?: 
     response.setHeader('Access-Control-Allow-Origin', origin);
     response.setHeader('Vary', 'Origin');
     response.setHeader('Cache-Control', 'no-store');
-    if (request.method === 'OPTIONS') { response.writeHead(204, { 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type' }).end(); return; }
+    if (request.method === 'OPTIONS') { response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type' }).end(); return; }
+    if (request.method === 'GET' && request.url === '/health') {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ status: 'running', jevConfigured: Boolean(process.env.AI_GATEWAY_API_KEY) }));
+      return;
+    }
     if (request.method !== 'POST' || request.url !== '/jev/evaluate') { response.writeHead(404).end(); return; }
     const chunks: Buffer[] = [];
     let size = 0;

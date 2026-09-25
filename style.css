@@ -1,0 +1,11 @@
+.oc-root .oc-body { display: grid; gap: 0.4rem; padding: 0.5rem 0.25rem 0.75rem; }
+.oc-root .oc-body p { margin: 0 0 0.4rem; opacity: 0.85; }
+.oc-root .oc-row { display: grid; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.5fr); gap: 0.5rem; align-items: center; }
+.oc-root .oc-row input:not([type="checkbox"]), .oc-root .oc-row select { width: 100%; min-width: 0; box-sizing: border-box; }
+.oc-root .oc-row input[type="checkbox"] { justify-self: start; }
+.oc-root .oc-hint { display: block; opacity: 0.7; line-height: 1.3; margin: -0.3rem 0 0.3rem; }
+.oc-root .oc-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.oc-root details { border: 1px solid var(--SmartThemeBorderColor, #777); border-radius: 0.4rem; padding: 0.4rem; }
+.oc-root details > summary { cursor: pointer; font-weight: 600; }
+.oc-root .oc-status { padding: 0.45rem; border-left: 3px solid var(--SmartThemeQuoteColor, #8cb); line-height: 1.4; }
+.oc-root .oc-log { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 22rem; font-size: 0.78rem; }
