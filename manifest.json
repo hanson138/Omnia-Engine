@@ -1,0 +1,14 @@
+{
+  "display_name": "Omnia Character Cognition",
+  "loading_order": 25,
+  "requires": [],
+  "optional": [],
+  "dependencies": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "Omnia Engine Project",
+  "version": "0.2.0",
+  "homePage": "",
+  "auto_update": false,
+  "minimum_client_version": "1.19.0"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "omnia-cognition-st",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "esbuild src/st-entry.ts --bundle --minify --format=iife --target=es2022 --outfile=index.js && node scripts/clean-bundle.mjs && esbuild src/index.ts --bundle --format=iife --target=es2022 --outfile=dist/omnia-cognition.js && esbuild bridge/server.ts --bundle --platform=node --format=esm --packages=external --target=node22 --outfile=dist/bridge-server.mjs",
+    "bridge": "node dist/bridge-server.mjs"
+  },
+  "dependencies": {
+    "zod": "4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.2",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.2",
+    "vitest": "4.1.11"
+  }
+}
