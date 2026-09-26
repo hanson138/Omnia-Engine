@@ -13,24 +13,35 @@
 
 `OFF` 不请求也不注入；`RELEVANCE` 选择显著证据；`COGNITION` 再选择回应倾向；`DEBUG` 额外显示候选、选中 ID 与注入内容。当前只支持单角色聊天，群聊会在诊断中说明跳过。Jev 不负责写对白，也不把发言自动当作世界事实。
 
-## 安装到本机 ST
+## 从 ST 安装扩展
+
+在 SillyTavern 中打开**扩展程序 → 安装扩展程序**，填写：
+
+| 字段 | 内容 |
+| --- | --- |
+| Git 仓库 URL | `https://github.com/hanson138/Omnia-Engine.git` |
+| 分支或标签名 | `sillytavern-extension` |
+
+安装后刷新 ST 页面，在**扩展程序 → Omnia · 角色认知**中选择模式。ST 1.19.0 的安装界面支持单独指定分支；只填写仓库 URL 会安装默认的 `main`，其中没有此扩展。先用 `mock + DEBUG` 做单角色接线测试；正式接 Jev 时再切换 `bridge`。如果之前启用了同名 TavernHelper 全局实验脚本，请先关闭它，否则会重复注入。仓库的 `main` 保持原样，本扩展分支沿用仓库已有的 AGPL-3.0 许可证。
+
+## 从本机目录安装
 
 需要 Node.js 22 或更新版本；不需要 Docker、WSL 或 Linux。本仓库已包含构建好的 `index.js`，所以**安装扩展时无需运行 npm**。先在 PowerShell 中进入本仓库，把下列路径改成你的 SillyTavern 安装目录：
 
 ```powershell
-cd E:\Codex_local\new_project\omnia-cognition-st
-.\scripts\install-local.ps1 -SillyTavernPath 'E:\path\to\SillyTavern'
+cd '你的扩展源码目录'
+.\scripts\install-local.ps1 -SillyTavernPath '你的 SillyTavern 安装目录'
 ```
 
-如果你使用了 ST 多用户模式，另传 `-UserHandle '用户名'`。脚本检查 ST 和用户目录后，只复制 `manifest.json`、`index.js`、`style.css`。刷新 ST 页面，打开顶部**扩展程序**，在“Omnia · 角色认知”抽屉设置模式。先用 `mock + DEBUG` 做单角色接线测试；正式接 Jev 时再切换 `bridge`。如果之前启用了同名 TavernHelper 全局实验脚本，请先关闭它，否则会重复注入。
+如果你使用了 ST 多用户模式，另传 `-UserHandle '用户名'`。脚本检查 ST 和用户目录后，只复制 `manifest.json`、`index.js`、`style.css`。
 
-本仓库根目录已有 ST 所需的 `manifest.json`、`index.js` 与 `style.css`，以后放到可访问的 Git 仓库后，可用 ST 的“扩展程序 → 安装扩展程序”输入仓库 URL。**目前没有远程仓库或导入 URL。** 当前 ST 安装器只接受 HTTP(S) Git URL，不接受本机目录或 ZIP；上面的本机复制方式已实测。[ST 扩展安装说明](https://docs.sillytavern.app/extensions/)
+本仓库根目录已有 ST 所需的 `manifest.json`、`index.js` 与 `style.css`。ST 安装器只接受 HTTP(S) Git URL，不接受本机目录或 ZIP；本机复制方式已实测。[ST 扩展安装说明](https://docs.sillytavern.app/extensions/)
 
-本次隔离测试宿主位于 `.local-host/SillyTavern`，已被 Git 忽略。在该目录运行 `node server.js --port 8000` 可启动它。测试假模型可从本仓库运行 `node tests/live/openai-stub.mjs`；它只用于检查注入，不评价对白质量。
+测试假模型可从本仓库运行 `node tests/live/openai-stub.mjs`；它只用于检查注入，不评价对白质量。
 
 ## 本机 Jev 桥
 
-桥服务与 ST 主模型连接分开运行。它复用同级 `../omnia-engine/packages/jev/dist` 中的 `AiSdkJevClient`。在**启动桥的 PowerShell 窗口**设置 `AI_GATEWAY_API_KEY` 环境变量，然后在本仓库运行：
+从 ST 安装扩展只部署浏览器端；`bridge` 是独立的本机实验服务，尚不是一键安装功能。若要使用真实 Jev，需另在本机克隆本分支、运行 `npm ci` 和 `npm run build`，并准备同级 `../omnia-engine/packages/jev/dist` 构建包，供桥加载 `AiSdkJevClient`。在**启动桥的 PowerShell 窗口**设置 `AI_GATEWAY_API_KEY` 环境变量，然后在本仓库运行：
 
 ```powershell
 $env:ST_ALLOWED_ORIGIN = 'http://127.0.0.1:8000'

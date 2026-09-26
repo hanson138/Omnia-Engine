@@ -1,5 +1,7 @@
 # Phase A：接口核对记录（2026-09-26）
 
+发布补充：SillyTavern 1.19.0 的安装对话框还提供独立的“分支或标签名”输入；服务端把该字段传给 Git clone。本扩展使用 `sillytavern-extension` 分支。
+
 原生扩展 0.2 补充：SillyTavern 1.19.0 的扩展管理器从仓库根目录读取 `manifest.json`，`js`/`css` 指向入口文件；其“安装扩展程序”只接受 HTTP(S) Git URL。本地安装可复制到 `data/default-user/extensions/<name>`。`window.SillyTavern.getContext()` 提供 `eventSource`、`eventTypes`、`extensionSettings`、`saveSettingsDebounced`、`setExtensionPrompt`、`extensionPrompts` 和 `loadWorldInfo`。原生入口据此替换 TavernHelper 运行依赖；`/getcharbook type=all`、`/getglobalbooks` 为只读命令，返回绑定和已启用全局世界书名。实际 ST 宿主已验证设置抽屉、持久化、全局 `Eldoria` 候选、一次性注入和 OFF 清理。[官方扩展文档](https://docs.sillytavern.app/for-contributors/writing-extensions/)
 
 本项目独立于 Omnia Engine。以下接口先从公开源码和类型声明核对，随后在隔离的 SillyTavern 1.19.0（`06bde939`）及 TavernHelper 4.11.0（`407b90a5`）安装中验证了面板、单角色上下文和一次性注入。RUBY 参考源码固定在 `a16523b0`。未验证的行为在[实际结果](docs/RESULTS.md)中单列。
