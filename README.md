@@ -1,5 +1,7 @@
 # Omnia Character Cognition · SillyTavern 扩展 0.2
 
+> **开发冻结（2026-09-27）**：现有扩展、验证结果与后续 Jev 直连方案保存在本分支；暂停功能开发和真实 Jev 调用，将工作转回 Omnia Engine 主线。现有 `mock` 与已构建安装包仍可用于复现接线测试。范围、恢复条件与未验证事项见[冻结记录](docs/FREEZE_2026-09-27.md)。
+
 这是一个可本地安装的 SillyTavern 原生 UI 扩展，用于检验“先筛选角色此刻在意的信息，再由 ST 原有模型写对白”是否改善角色扮演。它不修改 ST 核心，也不是 Omnia 世界运行时。默认 `OFF + mock`；真实 Jev 与长期对照质量尚未验证，详见[实测记录](docs/RESULTS.md)。
 
 ```text
